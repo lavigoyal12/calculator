@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      padding: 24px; background: #eef2f7; color: #182230;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+    }
+    .calculator {
+      width: min(100%, 340px); padding: 20px; border-radius: 24px;
+      background: #172033; box-shadow: 0 22px 55px #17203340;
+    }
+    .display {
+      min-height: 112px; display: flex; flex-direction: column;
+      justify-content: flex-end; align-items: flex-end; overflow: hidden;
+      padding: 12px 8px 20px; color: white; text-align: right;
+    }
+    .previous { min-height: 24px; color: #aab4c5; font-size: 16px; }
+    .current { width: 100%; overflow: hidden; font-size: clamp(36px, 12vw, 52px); font-weight: 500; white-space: nowrap; }
+    .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    button {
+      min-height: 62px; border: 0; border-radius: 17px; background: #29354b;
+      color: #f7f9fc; font: inherit; font-size: 22px; cursor: pointer;
+      transition: filter .12s, transform .08s;
+    }
+    button:hover { filter: brightness(1.18); }
+    button:active { transform: scale(.96); }
+    .utility { background: #3b4860; }
+    .operator { background: #33496b; color: #b8d1ff; }
+    .equals { grid-row: span 2; background: #4f83ed; color: white; }
+    .zero { grid-column: span 2; }
+    @media (max-width: 360px) { button { min-height: 56px; } .calculator { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <main class="calculator" aria-label="Calculator">
+    <div class="display" aria-live="polite" aria-atomic="true">
+      <div class="previous" id="previous"></div>
+      <div class="current" id="current">0</div>
+    </div>
+    <div class="keys">
+      <button class="utility" data-action="clear">AC</button>
+      <button class="utility" data-action="delete" aria-label="Delete last digit">⌫</button>
+      <button class="utility" data-action="sign">±</button>
+      <button class="operator" data-operator="÷">÷</button>
+      <button data-number="7">7</button><button data-number="8">8</button><button data-number="9">9</button>
+      <button class="operator" data-operator="×">×</button>
+      <button data-number="4">4</button><button data-number="5">5</button><button data-number="6">6</button>
+      <button class="operator" data-operator="−">−</button>
+      <button data-number="1">1</button><button data-number="2">2</button><button data-number="3">3</button>
+      <button class="operator" data-operator="+">+</button>
+      <button class="zero" data-number="0">0</button><button data-action="decimal">.</button>
+      <button class="equals" data-action="equals">=</button>
+    </div>
+  </main>
+  <script>
+    const currentEl = document.getElementById('current');
+    const previousEl = document.getElementById('previous');
+    let current = '0', previous = '', operator = null, replaceCurrent = false;
+    function render() { currentEl.textContent = current; previousEl.textContent = previous; }
+    function enterNumber(number) {
+      if (replaceCurrent || current === 'Error') { current = number; replaceCurrent = false; }
+      else if (current === '0') current = number;
+      else if (current.length < 14) current += number;
+      render();
+    }
+    function chooseOperator(nextOperator) {
+      if (current === 'Error') return;
+      if (operator && !replaceCurrent) calculate();
+      previous = `${current} ${nextOperator}`;
+      operator = nextOperator; replaceCurrent = true; render();
+    }
+    function calculate() {
+      if (!operator || current === 'Error') return;
+      const a = Number(previous.split(' ')[0]), b = Number(current);
+      let answer;
+      if (operator === '+') answer = a + b;
+      if (operator === '−') answer = a - b;
+      if (operator === '×') answer = a * b;
+      if (operator === '÷') answer = b === 0 ? NaN : a / b;
+      current = Number.isFinite(answer) ? String(Number(answer.toPrecision(10))) : 'Error';
+      previous = ''; operator = null; replaceCurrent = true; render();
+    }
+    document.querySelector('.keys').addEventListener('click', event => {
+      const button = event.target.closest('button'); if (!button) return;
+      if (button.dataset.number !== undefined) enterNumber(button.dataset.number);
+      else if (button.dataset.operator) chooseOperator(button.dataset.operator);
+      else switch (button.dataset.action) {
+        case 'clear': current = '0'; previous = ''; operator = null; replaceCurrent = false; render(); break;
+        case 'delete': current = current === 'Error' || current.length <= 1 ? '0' : current.slice(0, -1); render(); break;
+        case 'decimal': if (replaceCurrent || current === 'Error') { current = '0.'; replaceCurrent = false; } else if (!current.includes('.')) current += '.'; render(); break;
+        case 'sign': if (current !== '0' && current !== 'Error') current = current.startsWith('-') ? current.slice(1) : '-' + current; render(); break;
+        case 'equals': calculate(); break;
+      }
+    });
+    document.addEventListener('keydown', event => {
+      if (/^[0-9]$/.test(event.key)) enterNumber(event.key);
+      else if (event.key === '.') document.querySelector('[data-action="decimal"]').click();
+      else if (event.key === 'Enter' || event.key === '=') { event.preventDefault(); calculate(); }
+      else if (event.key === 'Backspace') document.querySelector('[data-action="delete"]').click();
+      else if (event.key === 'Escape') document.querySelector('[data-action="clear"]').click();
+      else if ({ '+': '+', '-': '−', '*': '×', '/': '÷' }[event.key]) chooseOperator({ '+': '+', '-': '−', '*': '×', '/': '÷' }[event.key]);
+    });
+  </script>
+</body>
+</html>
